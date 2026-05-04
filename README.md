@@ -273,3 +273,103 @@ Cuando termines las pruebas, baja los contenedores de forma segura y elimina la 
 ```bash
 docker compose down
 ```
+
+## 9. Arquitectura en Kubernetes (Semana 10)
+
+Este apartado describe la migración de la infraestructura de GreenDevCorp hacia Kubernetes, transformando los servicios de Docker Compose en recursos nativos de K8s.
+
+### 9.1. Diagrama de Arquitectura (Kubernetes)
+
+```text
++-------------------------------------------------------------+
+|                     Host / Entorno Externo                  |
+|                       [ Usuario Final ]                     |
++------------------------------+------------------------------+
+                               |
+                               | Petición HTTP (Puerto NodePort: 30080)
+                               v
++-------------------------------------------------------------+
+|                 Clúster Kubernetes (Minikube)               |
+|                                                             |
+|   +-------------------+          +-------------------+      |
+|   |   Service Nginx   |          |   Service App     |      |
+|   |    (NodePort)     +--------->|   (ClusterIP)     |      |
+|   +-------------------+  Proxy   +---------+---------+      |
+|             |            Pass              |                |
+|             v                              v                |
+|   +-------------------+          +-------------------+      |
+|   | Deployment Nginx  |          | Deployment App    |      |
+|   |   (1 Réplica)     |          |   (2 Réplicas)    |      |
+|   +-------------------+          +---------+---------+      |
+|                                            | Conexión TCP   |
+|                                            | (Puerto 5432)  |
+|                                            v                |
+|                                  +-------------------+      |
+|                                  |   Service DB      |      |
+|                                  |   (ClusterIP)     |      |
+|                                  +---------+---------+      |
+|                                            |                |
+|                                            v                |
+|                                  +-------------------+      |
+|                                  | StatefulSet DB    |      |
+|                                  |   (1 Réplica)     |      |
+|                                  +---------+---------+      |
++--------------------------------------------|----------------+
+                                             | Montaje persistente
+                                             | /var/lib/postgresql/data
+                                             v
++-------------------------------------------------------------+
+|                  Almacenamiento Persistente                 |
+|                   [( PersistentVolume )]                    |
++-------------------------------------------------------------+
+```
+
+### 9.2. Recursos Utilizados y Justificación
+
+*   **ConfigMap & Secret:**
+    Extraen la configuración estática (`00-configmap.yaml`). `DB_PASSWORD` se aloja en un recurso `Secret` para mayor seguridad, mientras que el resto va en el `ConfigMap`. Ambos se inyectan como variables de entorno a los pods.
+
+*   **StatefulSet (Base de Datos):**
+    Utilizamos un `StatefulSet` en lugar de un `Deployment` para PostgreSQL porque las bases de datos requieren identificadores de red estables e integridad estricta en el orden de montaje de los volúmenes (`PersistentVolumeClaim`).
+
+*   **Deployments (App y Nginx):**
+    Los servicios *stateless* (sin estado) como el proxy y el backend se manejan mediante `Deployments`. El backend arranca con 2 réplicas para garantizar alta disponibilidad.
+
+*   **Services (ClusterIP y NodePort):**
+    *   `ClusterIP`: Proporciona una IP y nombre DNS interno permanente para la base de datos (`db`) y el backend (`app`). Así Nginx puede enrutar al backend, y el backend a la base de datos, sin importar cuántos pods mueran o se recreen.
+    *   `NodePort`: Abre un puerto en el host (Minikube) mapeado al puerto 80 del frontend, permitiendo que el usuario final acceda a la aplicación web.
+
+### 9.3. Límites y Pruebas de Salud (Probes)
+
+Cada Deployment/StatefulSet tiene configurado:
+*   **Resource Limits & Requests:** Previenen que un contenedor monopolice la CPU o la memoria del clúster (Node). Los "requests" garantizan un mínimo para que Kubernetes sepa dónde agendar el pod.
+*   **Liveness & Readiness Probes:**
+    *   `livenessProbe`: Comprueba si el contenedor se ha bloqueado. Si falla, el clúster mata el pod y crea uno nuevo.
+    *   `readinessProbe`: Comprueba si el contenedor está listo para recibir tráfico de red. Si falla, el Service deja de enviarle peticiones hasta que se recupere.
+
+### 9.4. Pruebas de Escalado y Resiliencia
+
+El script `test_cluster.sh` incluye comandos automatizados para demostrar el poder de K8s:
+
+1.  **Escalado:**
+    ```bash
+    kubectl scale deployment nginx --replicas=3
+    ```
+    Este comando le dice a Kubernetes que aumente dinámicamente los pods del proxy inverso de 1 a 3 para manejar más tráfico.
+
+2.  **Auto-Recuperación (Self-healing):**
+    ```bash
+    kubectl delete pod <pod-name>
+    ```
+    Simula una caída crítica de un contenedor. Al ejecutarse, Kubernetes detecta que el estado deseado (2 réplicas) no coincide con el actual (1 réplica) e inmediatamente levanta un nuevo pod para reemplazar al caído.
+
+3.  **Apagar o eliminar el entorno (Equivalente a `docker compose down`):**
+    Si deseas eliminar todos los recursos creados en el clúster sin apagar Minikube:
+    ```bash
+    kubectl delete -f kubernetes/
+    ```
+    Si deseas apagar por completo el clúster local de Minikube:
+    ```bash
+    minikube stop
+    ```
+
