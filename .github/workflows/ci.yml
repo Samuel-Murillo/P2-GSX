@@ -167,12 +167,7 @@ jobs:
         working-directory: ./terraform
         # Inyectamos solo las variables estrictamente necesarias para que
         # el grafo de recursos sea valido sin valores reales de produccion.
-        run: |
-          terraform validate \
-            -var="environment=dev" \
-            -var="namespace=greendev-dev" \
-            -var="docker_registry=placeholder" \
-            -var="db_password=placeholder"
+        run: terraform validate
 
       - name: Resumen de validacion
         if: always()
