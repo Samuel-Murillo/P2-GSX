@@ -28,6 +28,7 @@ WORKDIR /home/appuser/app
 # Copiar artefactos de la fase de builder
 COPY --from=builder /build/package.json ./
 COPY --from=builder /build/src/ ./src/
+COPY --from=builder /build/node_modules/ ./node_modules/
 
 # Cambiar ownership al usuario no-root
 RUN chown -R appuser:appgroup /home/appuser/app
