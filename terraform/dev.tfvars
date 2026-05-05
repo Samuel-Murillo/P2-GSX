@@ -13,8 +13,8 @@ environment = "dev"
 namespace   = "greendev-dev"
 
 # ── Registro de imagenes ──────────────────────────────────────
-# Sustituir por tu usuario de Docker Hub.
-docker_registry = "tu-usuario-dockerhub"
+# Usuario de Docker Hub detectado en semanas anteriores.
+docker_registry = "musefa"
 
 # En desarrollo se usa 'latest' para mayor comodidad con minikube image load.
 image_tag = "latest"

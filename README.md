@@ -371,5 +371,122 @@ El script `test_cluster.sh` incluye comandos automatizados para demostrar el pod
     Si deseas apagar por completo el clúster local de Minikube:
     ```bash
     minikube stop
+
+## 5. Arquitectura de Infraestructura como Código - Semana 11
+
+### 5.1 Justificación de Terraform frente a Ansible
+En la Semana 10 la infraestructura se gestionaba manualmente con `kubectl apply`. Ese método tiene varias limitaciones: falta de estado auditable, idempotencia no garantizada y dificultad para manejar múltiples entornos. Terraform ofrece un enfoque declarativo, gestión de estado, planificaciones previas a la ejecución y soporte nativo para Kubernetes mediante el proveedor `hashicorp/kubernetes`.
+
+### 5.2 Estructura del proyecto Terraform
+```
+terraform/
+├── main.tf          # Provider, namespace, ConfigMap y Secret
+├── variables.tf     # Declaración de variables (sin valores sensibles)
+├── outputs.tf       # Salidas de URLs, puertos y entorno
+├── nginx.tf         # Deployment y Service de Nginx
+├── app.tf           # Deployment y Service del backend Node.js
+├── db.tf            # PV, PVC, StatefulSet y Service de PostgreSQL
+├── dev.tfvars       # Valores para el entorno de desarrollo (Minikube)
+└── staging.tfvars   # Valores para el entorno de staging
+```
+
+### 5.3 Gestión de secretos y contraseñas
+- **Contraseña de PostgreSQL** (`db_password`) **NO** se almacena en ningún archivo versionado. Está declarada como `sensitive` en `variables.tf` y se inyecta mediante una variable de entorno:
+```bash
+export TF_VAR_db_password="secret_example_password"
+```
+  También puede pasarse con `-var` al ejecutar Terraform.
+- **Credenciales de Docker Hub** se gestionan como *Repository Secrets* en GitHub Actions (`DOCKERHUB_USERNAME` y `DOCKERHUB_TOKEN`). Nunca aparecen en el código.
+
+### 5.4 Opción A — Despliegue manual paso a paso
+
+1. **Instalar Terraform** (si aún no está): `bash setup_iac.sh`
+2. **Iniciar Minikube**: `minikube start`
+3. **Cargar imágenes en Minikube** (el clúster no ve el Docker de tu Mac por defecto):
+```bash
+minikube image load musefa/nginx-gsx:latest
+minikube image load musefa/app-gsx:latest
+minikube image load musefa/postgres-gsx:latest
+```
+4. **Inyectar la contraseña** de la base de datos:
+```bash
+export TF_VAR_db_password="secret_example_password"
+```
+5. **Aplicar la infraestructura** (desde el directorio `terraform/`):
+```bash
+cd terraform
+terraform init   # solo la primera vez
+terraform apply -var-file=dev.tfvars -auto-approve
+```
+6. **Acceder a la aplicación** — Terraform crea todos los recursos de Kubernetes, pero la URL de acceso depende de la IP del nodo de Minikube, que solo Minikube conoce. Por eso se usa el siguiente comando para obtenerla:
+```bash
+minikube service nginx-service -n greendev-dev --url
+```
+Esto devuelve algo como `http://127.0.0.1:50451`. Abre esa URL en el navegador.
+
+---
+
+### 5.4 Opción B — Script automatizado `deploy_dev.sh` ⚡ (recomendado)
+
+El script `deploy_dev.sh` realiza en un solo comando todos los pasos necesarios:
+
+| Paso | Qué hace |
+|------|----------|
+| 1 | Calcula el **SHA corto** del commit actual como etiqueta de imagen. |
+| 2 | Ejecuta `docker build` para las tres imágenes con esa etiqueta. |
+| 3 | Carga las imágenes en Minikube (`minikube image load`). |
+| 4 | Ejecuta `terraform apply` pasando la etiqueta calculada. |
+| 5 | **Túnel Automático (macOS/Docker)**: Lanza un túnel en segundo plano y muestra la URL local (`127.0.0.1`). |
+
+**Cómo usarlo:**
+```bash
+# Exportar contraseña (solo una vez por sesión)
+export TF_VAR_db_password="secret_example_password"
+
+# Desplegar todo
+./deploy_dev.sh
+```
+
+> [!IMPORTANT]
+> **Sobre el Túnel en macOS:** El script deja un proceso `minikube service` corriendo en segundo plano. Si cierras la terminal, el túnel se cerrará y la URL dejará de funcionar. Si esto pasa, simplemente vuelve a ejecutar el script.
+
+---
+
+### 5.5 ¿Por qué `127.0.0.1` y no la IP de Minikube?
+
+En macOS, cuando usas el driver de **Docker**, el clúster de Kubernetes vive dentro de una red aislada que tu Mac no puede ver directamente. 
+- Terraform crea el Service de tipo `NodePort`.
+- El script lanza un túnel que mapea un puerto de tu Mac (`127.0.0.1`) directamente al puerto del servicio dentro de Minikube.
+
+---
+
+### 5.6 Cómo detener y limpiar el entorno (Finalizar la App)
+
+Si has terminado de trabajar y quieres liberar recursos de tu ordenador, sigue este orden:
+
+1.  **Eliminar la Infraestructura (Terraform):**
+    Borra todos los pods, servicios y secretos del clúster, pero mantiene Minikube encendido.
+    ```bash
+    cd terraform
+    terraform destroy -var-file=dev.tfvars -auto-approve
     ```
+
+2.  **Cerrar Túneles activos:**
+    Si el script dejó túneles en background, puedes cerrarlos todos con:
+    ```bash
+    pkill -f "minikube service"
+    ```
+
+3.  **Apagar Minikube:**
+    Detiene la máquina virtual/contenedor del clúster.
+    ```bash
+    minikube stop
+    ```
+
+4.  **Borrado Total (Opcional):**
+    Si quieres borrar el clúster por completo (incluyendo volúmenes de datos):
+    ```bash
+    minikube delete
+    ```
+
 
