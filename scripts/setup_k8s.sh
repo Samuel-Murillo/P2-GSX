@@ -40,21 +40,21 @@ eval $(minikube docker-env)
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "Construyendo imagen: app-gsx..."
-docker build --no-cache -t app-gsx:latest "$SCRIPT_DIR/app/"
+docker build --no-cache -t app-gsx:latest "$SCRIPT_DIR/../app/"
 
 echo "Construyendo imagen: nginx-gsx..."
-docker build --no-cache -t nginx-gsx:latest "$SCRIPT_DIR/nginx/"
+docker build --no-cache -t nginx-gsx:latest "$SCRIPT_DIR/../nginx/"
 
 echo "Construyendo imagen: postgres-gsx..."
-if [ -d "$SCRIPT_DIR/db" ] && [ -f "$SCRIPT_DIR/db/Dockerfile" ]; then
-    docker build --no-cache -t postgres-gsx:latest "$SCRIPT_DIR/db/"
+if [ -d "$SCRIPT_DIR/../db" ] && [ -f "$SCRIPT_DIR/../db/Dockerfile" ]; then
+    docker build --no-cache -t postgres-gsx:latest "$SCRIPT_DIR/../db/"
 else
     echo "  (No se encontró Dockerfile en /db, usando imagen base de postgres)"
 fi
 
 echo ""
 echo "=== Desplegando manifiestos de Kubernetes ==="
-kubectl apply -f "$SCRIPT_DIR/kubernetes/"
+kubectl apply -f "$SCRIPT_DIR/../kubernetes/"
 
 echo ""
 echo "=== Esperando a que los pods estén listos ==="

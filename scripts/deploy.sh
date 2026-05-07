@@ -16,19 +16,13 @@ echo "1. Autenticación en Docker Hub..."
 docker login
 
 echo "2. Construyendo imagen de Nginx..."
-cd nginx
-docker build -t $NGINX_IMAGE_NAME .
-cd ..
+docker build -t $NGINX_IMAGE_NAME ../nginx
 
 echo "3. Construyendo imagen de Aplicación..."
-cd app
-docker build -t $APP_IMAGE_NAME .
-cd ..
+docker build -t $APP_IMAGE_NAME ../app
 
 echo "4. Construyendo imagen de Base de Datos..."
-cd db
-docker build -t $DB_IMAGE_NAME .
-cd ..
+docker build -t $DB_IMAGE_NAME ../db
 
 echo "5. Etiquetando imágenes..."
 docker tag $NGINX_IMAGE_NAME $DOCKER_USERNAME/$NGINX_IMAGE_NAME:$VERSION

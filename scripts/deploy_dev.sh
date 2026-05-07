@@ -34,7 +34,7 @@ error()   { echo -e "${RED}[ERROR]${RESET} $*"; exit 1; }
 
 # ── Directorio raíz del proyecto ──────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TERRAFORM_DIR="${SCRIPT_DIR}/terraform"
+TERRAFORM_DIR="${SCRIPT_DIR}/../terraform"
 
 # ── Configuración ─────────────────────────────────────────────────────────────
 REGISTRY="musefa"
@@ -42,9 +42,9 @@ NGINX_IMAGE="${REGISTRY}/nginx-gsx"
 APP_IMAGE="${REGISTRY}/app-gsx"
 DB_IMAGE="${REGISTRY}/postgres-gsx"
 
-NGINX_CONTEXT="${SCRIPT_DIR}/nginx"
-APP_CONTEXT="${SCRIPT_DIR}/app"
-DB_CONTEXT="${SCRIPT_DIR}/db"
+NGINX_CONTEXT="${SCRIPT_DIR}/../nginx"
+APP_CONTEXT="${SCRIPT_DIR}/../app"
+DB_CONTEXT="${SCRIPT_DIR}/../db"
 
 TFVARS_FILE="dev.tfvars"
 
@@ -74,7 +74,7 @@ success "Precondiciones cumplidas."
 echo ""
 
 # ── 1. Calcular etiqueta de imagen ────────────────────────────────────────────
-IMAGE_TAG=$(git -C "${SCRIPT_DIR}" rev-parse --short HEAD 2>/dev/null || echo "latest")
+IMAGE_TAG=$(git -C "${SCRIPT_DIR}/.." rev-parse --short HEAD 2>/dev/null || echo "latest")
 info "Etiqueta de imagen calculada: ${BOLD}${IMAGE_TAG}${RESET}"
 echo ""
 
