@@ -162,7 +162,7 @@ resource "kubernetes_network_policy" "db_policy" {
         protocol = "TCP"
       }
     }
-    
+
     # La BD no necesita iniciar conexiones externas (Egress bloqueado por default_deny_all, solo DNS permitido)
   }
 }
@@ -174,12 +174,12 @@ resource "kubernetes_network_policy" "deny_cross_environment" {
     name      = "deny-cross-environment"
     namespace = kubernetes_namespace.greendev.metadata[0].name
   }
-  
+
   spec {
     pod_selector {}
-    
+
     policy_types = ["Ingress"]
-    
+
     ingress {
       # Solo permite tráfico de namespaces que tengan el MISMO entorno (dev con dev, staging con staging)
       from {
