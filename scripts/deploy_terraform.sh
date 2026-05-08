@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # =============================================================================
-# deploy_dev.sh — Despliegue automatizado en Minikube con Terraform
+# deploy_terraform.sh — Despliegue automatizado en Minikube con Terraform
 # =============================================================================
 # Uso:
-#   bash deploy_dev.sh
+#   bash deploy_terraform.sh
 #
 # Requisitos:
 #   - Minikube en ejecución (minikube start)
-#   - Terraform instalado (bash setup_iac.sh)
+#   - Terraform instalado (bash install_terraform.sh)
 #   - Variable de entorno TF_VAR_db_password exportada
 #
 # Lo que hace este script:
@@ -60,7 +60,7 @@ info "Comprobando precondiciones..."
 
 command -v docker      >/dev/null 2>&1 || error "Docker no está instalado."
 command -v minikube    >/dev/null 2>&1 || error "Minikube no está instalado."
-command -v terraform   >/dev/null 2>&1 || error "Terraform no instalado. Ejecuta: bash setup_iac.sh"
+command -v terraform   >/dev/null 2>&1 || error "Terraform no instalado. Ejecuta: bash install_terraform.sh"
 
 if ! minikube status | grep -q "Running"; then
   error "Minikube no está en ejecución. Ejecuta primero: minikube start"

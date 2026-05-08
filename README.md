@@ -1,64 +1,86 @@
-# Proyecto de Contenerización e Infraestructura - GreenDevCorp
+# GreenDevCorp - Proyecto Final de Transformación Digital
 
-Bienvenido al repositorio central de arquitectura e infraestructura de GreenDevCorp. Este proyecto detalla la evolución técnica, desde la contenerización de las aplicaciones iniciales hasta el despliegue automático en Kubernetes utilizando Infraestructura como Código (Terraform) y estrictas políticas de red.
+Bienvenido al repositorio oficial de infraestructura de GreenDevCorp. Este proyecto representa la fase final de nuestra transformación digital hacia una arquitectura moderna, contenerizada y completamente orquestada con Kubernetes, gestionada mediante Infraestructura como Código (IaC) con Terraform.
 
-## Documentación por Fases (Semanas)
+## Visión General del Proyecto
 
-Toda la documentación técnica, manuales paso a paso, decisiones de diseño y justificaciones han sido extraídas y organizadas cronológicamente en la carpeta `/docs`.
+GreenDevCorp ha modernizado su aplicación principal migrando de un entorno monolítico tradicional a una arquitectura de microservicios. Este repositorio contiene todo el código necesario para desplegar de manera reproducible y automatizada nuestra infraestructura en un entorno de desarrollo o producción basado en Kubernetes.
 
-Por favor, consulta los siguientes documentos para entender, levantar, probar o borrar la infraestructura correspondiente a cada fase:
+El sistema consta de tres capas principales:
+* **Frontend/Proxy Inverso:** Servidor Nginx que maneja las peticiones entrantes y las redirige.
+* **Aplicación Backend:** Aplicación Node.js encargada de la lógica de negocio.
+* **Base de Datos:** PostgreSQL con persistencia de datos configurada mediante Persistent Volumes en Kubernetes.
 
-*   **[Semana 8: Contenerización y Optimización](docs/SEMANA_08_CONTENEDORIZACION.md)**
-    *   Optimización extrema con Alpine Linux y multistage builds.
-    *   Consideraciones de seguridad (non-root, read-only, mitigación de CVEs).
-    *   Manual de despliegue seguro y pruebas locales de Docker puro.
-*   **[Semana 9: Arquitectura de Orquestación (Docker Compose)](docs/SEMANA_09_DOCKER_COMPOSE.md)**
-    *   Flujo de red interna, volúmenes persistentes y dependencias de arranque.
-    *   Configuración de variables de entorno estables mediante `.env`.
-    *   Manual paso a paso de orquestación con Compose.
-*   **[Semana 10: Arquitectura en Kubernetes](docs/SEMANA_10_KUBERNETES.md)**
-    *   Migración a Pods, Deployments, Services y StatefulSets.
-    *   Pruebas empíricas de resiliencia (Auto-healing y Escalado horizontal).
-*   **[Semana 11: Infraestructura como Código (Terraform)](docs/SEMANA_11_TERRAFORM.md)**
-    *   Justificación del salto a código declarativo y gestión de secretos.
-    *   **Manual del script automatizado de despliegue (`deploy_dev.sh`)**.
-    *   Instrucciones completas para limpiar el clúster.
-*   **[Semana 12: Diseño de Red, Identidad y Seguridad](docs/SEMANA_12_RED_E_IDENTIDAD.md)**
-    *   Planificación CIDR, Diagramas de Arquitectura y fronteras de seguridad.
-    *   Investigación sobre servicios Core (DNS, DHCP, NTP) y estrategias de identidad (SSO, LDAP).
-    *   Manual de pruebas de intrusión y verificación de las NetworkPolicies (`test_network_policies.sh`).
+Todo el despliegue está gestionado y aprovisionado a través de **Terraform**, garantizando la inmutabilidad y consistencia del entorno. Además, se han implementado políticas de red (NetworkPolicies) para garantizar la seguridad y segmentación estricta del tráfico entre servicios.
 
-## Estructura del Repositorio
+## Documentación del Proyecto
 
-```text
-.
-├── app/                  # Código fuente y Dockerfile del Backend Node.js
-├── db/                   # Configuración inicial y Dockerfile de PostgreSQL
-├── docs/                 # Toda la documentación técnica separada
-├── kubernetes/           # Manifiestos estáticos YAML (Fase transicional a K8s)
-├── nginx/                # Configuración, estáticos y Dockerfile del Frontend
-├── scripts/              # Automatización (deploy_dev.sh, setups, tests)
-└── terraform/            # Código HCL de Terraform
-```
+La documentación detallada se encuentra en el directorio `/docs/`:
 
-## Guía Rápida de Arranque (Estado Actual)
+* [Arquitectura Final (`/docs/ARCHITECTURE_FINAL.md`)](./docs/ARCHITECTURE_FINAL.md): Diagramas de infraestructura, flujos de datos y especificaciones de microservicios.
+* [Runbook Operativo (`/docs/RUNBOOK.md`)](./docs/RUNBOOK.md): Guía de operaciones diarias, despliegues y escalado.
+* [Troubleshooting (`/docs/TROUBLESHOOTING.md`)](./docs/TROUBLESHOOTING.md): Guía para la resolución de problemas comunes.
+* [Reflexión (`/docs/REFLECTION.md`)](./docs/REFLECTION.md): Ensayo personal sobre el proceso de aprendizaje DevOps.
 
-Si quieres levantar el proyecto al instante en su forma más evolucionada:
+## Quick Start: Despliegue desde cero
 
-1. **Asegúrate de que Minikube esté corriendo con soporte para red (CNI):**
+Este proyecto está diseñado para ejecutarse localmente usando Minikube y Terraform. Siga estas instrucciones para desplegar la infraestructura completa desde cero.
+
+### Prerrequisitos
+* Git
+* Minikube
+* Kubectl
+* Terraform
+
+### Pasos de Despliegue
+
+1. **Clonar el repositorio:**
    ```bash
-   minikube start --cni=calico
+   git clone https://github.com/usuario/greendevcorp.git
+   cd greendevcorp
    ```
-2. **Exporta la contraseña de la base de datos:**
+
+2. **Iniciar Minikube:**
+   Asegúrese de tener un clúster local funcionando.
    ```bash
-   export TF_VAR_db_password="tu_super_password"
+   minikube start
    ```
-3. **Lanza el script de despliegue mágico:**
-   ```bash
-   ./scripts/deploy_dev.sh
-   ```
-4. **Para destruir todo el entorno:**
+
+3. **Inicializar y aplicar Terraform:**
+   El proyecto utiliza Terraform para el despliegue en Kubernetes. Desplácese a la carpeta correspondiente e inicialice el proveedor.
    ```bash
    cd terraform
-   terraform destroy -var-file=dev.tfvars -auto-approve
+   terraform init
    ```
+   A continuación, aplique los manifiestos para crear toda la infraestructura de red, servicios, volúmenes y despliegues.
+   ```bash
+   terraform apply -auto-approve
+   ```
+
+4. **Verificar el despliegue:**
+   Puede comprobar que todos los pods están funcionando ejecutando:
+   ```bash
+   kubectl get pods -n default
+   ```
+
+5. **Acceder a la aplicación:**
+   Si está utilizando Minikube, puede obtener la IP y el puerto de acceso o crear un túnel al servicio de Nginx:
+   ```bash
+   minikube service nginx-service
+   ```
+
+6. **Prueba de Integración Completa:**
+   Para validar automáticamente que el entorno se crea, se configuran las políticas de seguridad y la comunicación fluye correctamente, puede ejecutar el script de integración desde la raíz del proyecto:
+   ```bash
+   cd ..
+   chmod +x scripts/integration_test.sh
+   ./scripts/integration_test.sh
+   ```
+
+### Limpieza del entorno
+
+Para destruir todos los recursos creados por Terraform de manera segura y dejar el clúster limpio:
+```bash
+cd terraform
+terraform destroy -auto-approve
+```

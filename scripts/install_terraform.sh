@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# setup_iac.sh
+# install_terraform.sh
 # Descarga e instala Terraform en sistemas Unix (Linux / macOS).
-# Uso: bash setup_iac.sh [VERSION]
-# Ejemplo: bash setup_iac.sh 1.8.5
+# Uso: bash install_terraform.sh [VERSION]
+# Ejemplo: bash install_terraform.sh 1.8.5
 
 set -euo pipefail
 

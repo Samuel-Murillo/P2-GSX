@@ -89,15 +89,15 @@ graph TD
 
 Se ha adoptado el bloque `10.0.0.0/16` para toda la organización, proporcionando 65,536 direcciones IP, lo cual es altamente escalable. 
 
-| Segmento de Red | Subred CIDR | IPs Disponibles | Propósito |
-| :--- | :--- | :--- | :--- |
-| **Red Corporativa (Global)** | `10.0.0.0/16` | 65,536 | Todo el tráfico corporativo interno. |
-| **DMZ / Exposición Externa** | `10.0.1.0/24` | 254 | Proxies inversos, Ingress controllers y Bastion Hosts. |
-| **Producción (Prod)** | `10.0.10.0/24` | 254 | Nodos y pods del entorno de producción. Aislado estrictamente. |
-| **Staging (Pre-Prod)** | `10.0.20.0/24` | 254 | Entorno de pruebas previo a producción. |
-| **Desarrollo (Dev)** | `10.0.30.0/24` | 254 | Entorno para desarrolladores y pruebas continuas. |
-| **Servicios Core (Infra)**| `10.0.100.0/24`| 254 | DNS, NTP, LDAP/AD, herramientas de monitorización (Prometheus). |
-| **VPN de Partners** | `10.0.200.0/24`| 254 | Segmento asignado dinámicamente a conexiones VPN externas. |
+| Segmento de Red              | Subred CIDR     | IPs Disponibles | Propósito                                                       |
+| :--------------------------- | :-------------- | :-------------- | :-------------------------------------------------------------- |
+| **Red Corporativa (Global)** | `10.0.0.0/16`   | 65,536          | Todo el tráfico corporativo interno.                            |
+| **DMZ / Exposición Externa** | `10.0.1.0/24`   | 254             | Proxies inversos, Ingress controllers y Bastion Hosts.          |
+| **Producción (Prod)**        | `10.0.10.0/24`  | 254             | Nodos y pods del entorno de producción. Aislado estrictamente.  |
+| **Staging (Pre-Prod)**       | `10.0.20.0/24`  | 254             | Entorno de pruebas previo a producción.                         |
+| **Desarrollo (Dev)**         | `10.0.30.0/24`  | 254             | Entorno para desarrolladores y pruebas continuas.               |
+| **Servicios Core (Infra)**   | `10.0.100.0/24` | 254             | DNS, NTP, LDAP/AD, herramientas de monitorización (Prometheus). |
+| **VPN de Partners**          | `10.0.200.0/24` | 254             | Segmento asignado dinámicamente a conexiones VPN externas.      |
 
 ### 1.3 Fronteras de Seguridad (Security Boundaries)
 
@@ -115,6 +115,24 @@ Esto previene la configuración errónea accidental: si un desarrollador configu
 * **Conexión VPN Site-to-Site:** Para conectar oficinas físicas, se implementa un túnel IPsec en el Firewall Perimetral. El tráfico interno viaja cifrado por Internet.
 * **VPN Client-to-Site (Teletrabajo/Partners):** Los usuarios se conectan mediante OpenVPN o WireGuard y reciben una IP del rango reservado `10.0.200.0/24`. 
 * **Exposición Segura:** Para exponer servicios a Partners, el tráfico ingresa por VPN. Una regla de firewall específica solo permite tráfico del rango `10.0.200.0/24` hacia un servicio específico en la DMZ.
+
+### 1.5 Análisis de Seguridad y Mitigación de Riesgos
+
+La infraestructura de GreenDevCorp está diseñada para mitigar los ataques más comunes mediante capas superpuestas:
+
+| Riesgo Identificado | Estrategia de Mitigación | Implementación en la Práctica |
+| :--- | :--- | :--- |
+| **Movimiento Lateral** | Aislamiento de red (Microsegmentación). | `NetworkPolicies` con política de *Default Deny*. Si un Pod es comprometido, el atacante no puede "saltar" a otros pods. |
+| **Acceso no autorizado a DB** | Restricción estricta de tráfico entrante. | Solo los pods con la etiqueta `app=backend` pueden conectar al puerto 5432 de la DB. |
+| **Error Humano / Despiste** | Prevención de configuraciones erróneas. | Uso de **Terraform (IaC)**. Las políticas se definen en código, eliminando el riesgo de olvidar configurar un firewall manualmente. |
+| **Ataque Externo Masivo** | Reducción de la superficie de ataque. | Solo el Ingress Controller tiene exposición pública. El Backend y la DB son totalmente invisibles desde Internet. |
+
+#### ¿Cómo prevenimos configuraciones erróneas accidentales?
+El sistema utiliza un enfoque de **Seguridad por Defecto (Secure by Default)**:
+1.  **Validación en CI:** Antes de aplicar cualquier cambio, el pipeline de GitHub Actions valida que el código Terraform sea correcto.
+2.  **Inmutabilidad de Red:** Las `NetworkPolicies` se aplican a nivel de Namespace. Si un desarrollador despliega por error un pod mal configurado en el entorno de producción, ese pod nacerá "mudo" por defecto, ya que no cumplirá con las etiquetas requeridas por las políticas de red activas.
+3.  **Aislamiento de Entornos:** La segmentación CIDR y las políticas entre Namespaces aseguran que, incluso con una contraseña de producción válida, un pod en el entorno de Desarrollo jamás podrá establecer una conexión TCP con la base de datos de Producción.
+
 
 ---
 
@@ -165,7 +183,7 @@ minikube start --cni=calico
 Luego, aplica Terraform usando el orquestador:
 ```bash
 export TF_VAR_db_password="tupassword"
-./scripts/deploy_dev.sh
+./scripts/deploy_terraform.sh
 ```
 
 ### 3.2 Ejecutar las Pruebas de Intrusión
@@ -173,7 +191,7 @@ export TF_VAR_db_password="tupassword"
 El script levanta pods "intrusos" y simula conexiones cruzadas y escaneos de puertos no autorizados.
 
 ```bash
-./scripts/test_network_policies.sh
+./scripts/k8s_check_security.sh
 ```
 
 **Interpretación:**

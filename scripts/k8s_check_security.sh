@@ -1,5 +1,5 @@
 #!/bin/bash
-# scripts/test_network_policies.sh
+# scripts/k8s_check_security.sh
 # Script automatizado para verificar las NetworkPolicies en Kubernetes.
 # Requiere: kubectl configurado y apuntando al clúster Minikube.
 

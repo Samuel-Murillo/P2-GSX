@@ -1,1 +1,23 @@
+# Entorno y Secretos
 .env
+.obsidian
+
+# Logs y Metricas
+*.log
+*.txt
+integration_test.log
+test_metrics.txt
+
+# Terraform (Critico: evita subir el estado de la infraestructura)
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+.terraform.lock.hcl
+
+# Node.js
+node_modules/
+npm-debug.log*
+
+# Sistema Operativo (macOS)
+.DS_Store

@@ -61,22 +61,28 @@ Este apartado describe la migración de la infraestructura de GreenDevCorp hacia
     - `ClusterIP`: Permite resolución DNS interna entre los pods sin depender de IPs inestables.
     - `NodePort`: Abre un puerto físico en el nodo (Minikube) para tráfico externo.
 
-## 3. Manual Paso a Paso: Levantar, Probar y Borrar
+## 3. Despliegue: Manual vs Automático
 
-### 3.1. Levantar el Entorno Manualmente (Vía kubectl)
-Este proceso era la forma manual empleada en la Semana 10 antes de la introducción de Terraform. Aún puedes ejecutarlo usando el script de automatización antiguo:
+### 3.1. Despliegue Automático (Mediante Script)
+Para una ejecución rápida y automatizada que gestione las precondiciones, puedes utilizar el script de configuración:
 ```bash
-./scripts/setup_k8s.sh
+./scripts/k8s_setup_manually.sh
 ```
 
-**Si prefieres hacerlo comando a comando:**
-1. Iniciar Minikube: `minikube start`
-2. Aplicar los manifiestos YAML:
+### 3.2. Despliegue Manual (Paso a Paso con kubectl)
+Si deseas tener un control total y ejecutar los comandos uno a uno:
+
+1. **Iniciar el clúster:**
+   ```bash
+   minikube start
+   ```
+2. **Aplicar los manifiestos YAML:**
+   Se cargan todos los recursos definidos en la carpeta `kubernetes/`:
    ```bash
    kubectl apply -f kubernetes/
    ```
 
-### 3.2. Probar la Resiliencia (Auto-Healing y Escalado)
+### 3.3. Probar la Resiliencia (Auto-Healing y Escalado)
 Puedes probar las capacidades dinámicas de Kubernetes:
 
 1. **Prueba de Escalado:**
@@ -97,7 +103,7 @@ Puedes probar las capacidades dinámicas de Kubernetes:
    minikube service nginx-service --url
    ```
 
-### 3.3. Borrar el Entorno
+### 3.4. Borrar el Entorno
 Elimina todos los recursos declarados en los ficheros YAML:
 ```bash
 kubectl delete -f kubernetes/
