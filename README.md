@@ -1,136 +1,86 @@
-# GreenDevCorp Infrastructure — Práctica 2 GSX
+# GreenDevCorp - Proyecto Final de Transformación Digital
 
-[![CI](https://github.com/Samuel-Murillo/Practica2-GSX/actions/workflows/ci.yml/badge.svg)](https://github.com/Samuel-Murillo/Practica2-GSX/actions)
+Bienvenido al repositorio oficial de infraestructura de GreenDevCorp. Este proyecto representa la fase final de nuestra transformación digital hacia una arquitectura moderna, contenerizada y completamente orquestada con Kubernetes, gestionada mediante Infraestructura como Código (IaC) con Terraform.
 
-## 📋 Descripción
+## Visión General del Proyecto
 
-Infraestructura IT completa para **GreenDevCorp**, una empresa de desarrollo sostenible en crecimiento. Implementada siguiendo estándares de producción real: contenedores seguros, orquestación escalable, automatización declarativa, redes segmentadas y observabilidad completa.
+GreenDevCorp ha modernizado su aplicación principal migrando de un entorno monolítico tradicional a una arquitectura de microservicios. Este repositorio contiene todo el código necesario para desplegar de manera reproducible y automatizada nuestra infraestructura en un entorno de desarrollo o producción basado en Kubernetes.
 
-**Asignatura:** Gestión de Sistemas y Redes (GSX) — Práctica 2  
-**Período:** Semanas 8–13 | **Entrega:** 15 de mayo de 2026
+El sistema consta de tres capas principales:
+* **Frontend/Proxy Inverso:** Servidor Nginx que maneja las peticiones entrantes y las redirige.
+* **Aplicación Backend:** Aplicación Node.js encargada de la lógica de negocio.
+* **Base de Datos:** PostgreSQL con persistencia de datos configurada mediante Persistent Volumes en Kubernetes.
 
----
+Todo el despliegue está gestionado y aprovisionado a través de **Terraform**, garantizando la inmutabilidad y consistencia del entorno. Además, se han implementado políticas de red (NetworkPolicies) para garantizar la seguridad y segmentación estricta del tráfico entre servicios.
 
-## 🏗️ Arquitectura
+## Documentación del Proyecto
 
-```
-Internet
-   │
-   ▼
-[Nginx Proxy :80]  ← único punto de entrada
-   │
-   ├──► [Frontend :3000]   (Dashboard web)
-   │
-   └──► [Backend API :8000] (FastAPI REST)
-              │
-              ▼
-        [PostgreSQL :5432]  (aislado, sin acceso externo)
-              │
-        [Prometheus + Grafana]  (observabilidad, Semana 13)
-```
+La documentación detallada se encuentra en el directorio `/docs/`:
 
-**Segmentación de red (Docker Compose / Kubernetes):**
-- `dmz_net` — Proxy expuesto al exterior
-- `internal_net` — Frontend ↔ Backend
-- `db_net` — Backend ↔ PostgreSQL (aislada)
+* [Arquitectura Final (`/docs/ARCHITECTURE_FINAL.md`)](./docs/ARCHITECTURE_FINAL.md): Diagramas de infraestructura, flujos de datos y especificaciones de microservicios.
+* [Runbook Operativo (`/docs/RUNBOOK.md`)](./docs/RUNBOOK.md): Guía de operaciones diarias, despliegues y escalado.
+* [Troubleshooting (`/docs/TROUBLESHOOTING.md`)](./docs/TROUBLESHOOTING.md): Guía para la resolución de problemas comunes.
+* [Reflexión (`/docs/REFLECTION.md`)](./docs/REFLECTION.md): Ensayo personal sobre el proceso de aprendizaje DevOps.
 
----
+## Quick Start: Despliegue desde cero
 
-## 📦 Estructura del repositorio
+Este proyecto está diseñado para ejecutarse localmente usando Minikube y Terraform. Siga estas instrucciones para desplegar la infraestructura completa desde cero.
 
-```
-Practica2-GSX/
-├── .github/workflows/     # CI/CD — GitHub Actions (Semana 11)
-├── week8-docker/          # Semana 8: Containerización
-│   ├── backend/           # FastAPI + Dockerfile multi-stage
-│   ├── frontend/          # Dashboard HTML/CSS/JS + Nginx
-│   └── nginx/             # Reverse Proxy
-├── week9-compose/         # Semana 9: Docker Compose
-│   ├── docker-compose.yml # Stack completo (4 servicios, 3 redes)
-│   └── .env.example       # Template de variables de entorno
-├── week10-kubernetes/     # Semana 10: Kubernetes (Minikube)
-├── week11-iac/            # Semana 11: Terraform + GitHub Actions
-├── week12-network/        # Semana 12: Network Design + NetworkPolicies
-├── week13-observability/  # Semana 13: Prometheus + Grafana
-└── docs/                  # Arquitectura, Runbook, Troubleshooting
-```
+### Prerrequisitos
+* Git
+* Minikube
+* Kubectl
+* Terraform
 
----
+### Pasos de Despliegue
 
-## 🚀 Inicio rápido
+1. **Clonar el repositorio:**
+   ```bash
+   git clone https://github.com/usuario/greendevcorp.git
+   cd greendevcorp
+   ```
 
-### Pre-requisitos
+2. **Iniciar Minikube:**
+   Asegúrese de tener un clúster local funcionando.
+   ```bash
+   minikube start
+   ```
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) ≥ 26.x
-- [Docker Compose](https://docs.docker.com/compose/) (incluido en Docker Desktop)
-- [Minikube](https://minikube.sigs.k8s.io/) (para Semana 10)
-- [kubectl](https://kubernetes.io/docs/tasks/tools/) (para Semana 10)
+3. **Inicializar y aplicar Terraform:**
+   El proyecto utiliza Terraform para el despliegue en Kubernetes. Desplácese a la carpeta correspondiente e inicialice el proveedor.
+   ```bash
+   cd terraform
+   terraform init
+   ```
+   A continuación, aplique los manifiestos para crear toda la infraestructura de red, servicios, volúmenes y despliegues.
+   ```bash
+   terraform apply -auto-approve
+   ```
 
-### Levantar el stack completo (Semana 9)
+4. **Verificar el despliegue:**
+   Puede comprobar que todos los pods están funcionando ejecutando:
+   ```bash
+   kubectl get pods -n default
+   ```
 
+5. **Acceder a la aplicación:**
+   Si está utilizando Minikube, puede obtener la IP y el puerto de acceso o crear un túnel al servicio de Nginx:
+   ```bash
+   minikube service nginx-service
+   ```
+
+6. **Prueba de Integración Completa:**
+   Para validar automáticamente que el entorno se crea, se configuran las políticas de seguridad y la comunicación fluye correctamente, puede ejecutar el script de integración desde la raíz del proyecto:
+   ```bash
+   cd ..
+   chmod +x scripts/integration_test.sh
+   ./scripts/integration_test.sh
+   ```
+
+### Limpieza del entorno
+
+Para destruir todos los recursos creados por Terraform de manera segura y dejar el clúster limpio:
 ```bash
-# 1. Crear fichero de entorno con credenciales
-cp week9-compose/.env.example week9-compose/.env
-# Editar .env y cambiar DB_USER y DB_PASSWORD
-
-# 2. Construir imágenes localmente
-docker build -t greendavcorp-backend:1.0.0  ./week8-docker/backend/
-docker build -t greendavcorp-frontend:1.0.0 ./week8-docker/frontend/
-docker build -t greendavcorp-proxy:1.0.0    ./week8-docker/nginx/
-
-# 3. Levantar todos los servicios
-docker compose -f week9-compose/docker-compose.yml --env-file week9-compose/.env up -d
-
-# 4. Verificar que todos están healthy
-docker compose -f week9-compose/docker-compose.yml ps
-
-# 5. Acceder al dashboard
-# Abrir http://localhost en el navegador
+cd terraform
+terraform destroy -auto-approve
 ```
-
-### Verificar servicios individualmente
-
-```bash
-# Health del backend
-curl http://localhost/health
-
-# Status de la API
-curl http://localhost/api/v1/status
-
-# Métricas (formato Prometheus)
-curl http://localhost/metrics
-```
-
----
-
-## 🔒 Seguridad implementada
-
-| Área | Medida | Impacto |
-|---|---|---|
-| **Contenedores** | Non-root user (uid 1001) en todos | Mínimo privilegio |
-| **Imágenes** | Multi-stage build, alpine/slim | Superficie de ataque reducida |
-| **Secretos** | Variables de entorno, nunca hardcoded | Evita exposición de credenciales |
-| **Red** | 3 redes aisladas (DMZ/Internal/DB) | Segmentación de tráfico |
-| **HTTP** | Cabeceras OWASP (X-Frame, CSP, etc.) | Protección cliente |
-| **Nginx** | `server_tokens off`, rate limiting | Oscurecer versión, proteger DDoS |
-| **Git** | `.gitignore` completo + `.env.example` | No filtrar secretos |
-| **PostgreSQL** | Sin puerto expuesto al host | Acceso solo desde backend |
-
----
-
-## 📅 Progreso semanal
-
-| Semana | Contenido | Estado |
-|---|---|---|
-| **8** | Docker — Containerización | ✅ Completo |
-| **9** | Docker Compose — Orquestación | ✅ Completo |
-| **10** | Kubernetes (Minikube) | 🔄 Pendiente |
-| **11** | IaC (Terraform) + CI/CD (GitHub Actions) | 🔄 Pendiente |
-| **12** | Network Design + Identity | 🔄 Pendiente |
-| **13** | Observabilidad + Documentación final | 🔄 Pendiente |
-
----
-
-## 👥 Equipo
-
-Samuel Murillo — Práctica 2 GSX

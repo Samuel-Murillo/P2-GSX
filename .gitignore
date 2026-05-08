@@ -1,91 +1,23 @@
-# ============================================================================
-# .gitignore — GreenDevCorp Infrastructure Repository
-# Práctica 2 GSX
-#
-# REGLA DE ORO: Si contiene credenciales, claves o datos sensibles → NO en Git
-# ============================================================================
-
-# ── Secrets y variables de entorno (CRÍTICO) ──────────────────────────────
-# Regla: ignorar TODOS los .env salvo el template de documentación
+# Entorno y Secretos
 .env
-.env.local
-.env.production
-.env.development
-.env.staging
-# Nota: .env.example NO se ignora — es el template seguro para el repo
-*.pem
-*.key
-*.crt
-*.p12
-*.pfx
-*secret*
-*credential*
-kubeconfig
-~/.kube/config
+.obsidian
 
-# ── Terraform ─────────────────────────────────────────────────────────────
+# Logs y Metricas
+*.log
+*.txt
+integration_test.log
+test_metrics.txt
+
+# Terraform (Critico: evita subir el estado de la infraestructura)
+**/.terraform/*
 *.tfstate
-*.tfstate.backup
-*.tfstate.lock.info
-.terraform/
+*.tfstate.*
+crash.log
 .terraform.lock.hcl
-terraform.tfvars        # Puede contener secretos
-override.tf
-override.tf.json
 
-# ── Docker ────────────────────────────────────────────────────────────────
-# No ignorar Dockerfiles ni docker-compose.yml (son código)
-.dockerignore           # No ignorar: es útil en repo
-
-# ── Python ────────────────────────────────────────────────────────────────
-__pycache__/
-*.py[cod]
-*$py.class
-*.egg-info/
-*.egg
-dist/
-build/
-.eggs/
-.venv/
-venv/
-env/
-ENV/
-.Python
-pip-log.txt
-pip-delete-this-directory.txt
-.pytest_cache/
-.coverage
-htmlcov/
-.mypy_cache/
-.ruff_cache/
-
-# ── Node.js ───────────────────────────────────────────────────────────────
+# Node.js
 node_modules/
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.npm
-.yarn-integrity
-dist/
-.next/
-out/
 
-# ── Kubernetes ────────────────────────────────────────────────────────────
-# Los manifiestos YAML SÍ se suben — los secrets NO
-# Se usa External Secrets Operator o Sealed Secrets en producción real
-
-# ── Logs y temporales ─────────────────────────────────────────────────────
-*.log
-logs/
-*.tmp
-*.temp
+# Sistema Operativo (macOS)
 .DS_Store
-Thumbs.db
-
-# ── IDEs y editores ───────────────────────────────────────────────────────
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.editorconfig

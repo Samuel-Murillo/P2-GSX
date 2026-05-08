@@ -1,0 +1,180 @@
+name: CI Pipeline - GreenDevCorp
+
+# El pipeline se dispara en cada push a la rama main.
+on:
+  push:
+    branches:
+      - main
+      - eric
+  pull_request:
+    branches:
+      - main
+      - eric
+
+# Variables de entorno globales accesibles en todos los jobs.
+env:
+  DOCKER_REGISTRY: docker.io
+  NGINX_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/nginx-gsx
+  APP_IMAGE:   ${{ secrets.DOCKERHUB_USERNAME }}/app-gsx
+
+jobs:
+  # ──────────────────────────────────────────────────────────
+  # JOB 1: Construir, etiquetar y subir las imagenes Docker
+  # ──────────────────────────────────────────────────────────
+  build-and-push:
+    name: Build, Tag and Push Docker Images
+    runs-on: ubuntu-latest
+
+    # Expone el SHA del commit como output para que jobs posteriores
+    # puedan usarlo como etiqueta de imagen reproducible.
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+
+    steps:
+      - name: Checkout del codigo fuente
+        uses: actions/checkout@v4
+
+      - name: Calcular etiqueta de imagen (commit SHA)
+        id: meta
+        # Se usa el SHA corto del commit (7 caracteres) para mayor legibilidad.
+        # El SHA largo esta disponible en github.sha si se necesita.
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "image_tag=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "Etiqueta calculada: ${SHORT_SHA}"
+
+      - name: Autenticacion en Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ── Imagen Nginx ────────────────────────────────────────
+      - name: Construir y subir imagen Nginx
+        uses: docker/build-push-action@v5
+        with:
+          context: ./nginx
+          file: ./nginx/Dockerfile
+          push: true
+          tags: |
+            ${{ env.NGINX_IMAGE }}:${{ steps.meta.outputs.image_tag }}
+            ${{ env.NGINX_IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ── Imagen App (backend Node.js) ────────────────────────
+      - name: Construir y subir imagen App
+        uses: docker/build-push-action@v5
+        with:
+          context: ./app
+          file: ./app/Dockerfile
+          push: true
+          tags: |
+            ${{ env.APP_IMAGE }}:${{ steps.meta.outputs.image_tag }}
+            ${{ env.APP_IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ──────────────────────────────────────────────────────────
+  # JOB 2: Escaneo de vulnerabilidades con Trivy
+  # Falla el pipeline si encuentra vulnerabilidades CRITICAS.
+  # ──────────────────────────────────────────────────────────
+  security-scan:
+    name: Container Security Scan (Trivy)
+    runs-on: ubuntu-latest
+    needs: build-and-push
+
+    steps:
+      - name: Checkout del codigo fuente
+        uses: actions/checkout@v4
+
+      - name: Autenticacion en Docker Hub (para poder hacer pull)
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # ── Escaneo imagen Nginx ────────────────────────────────
+      - name: Trivy - Escanear imagen Nginx
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "${{ env.NGINX_IMAGE }}:${{ needs.build-and-push.outputs.image_tag }}"
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          severity: "CRITICAL"
+
+      # ── Escaneo imagen App ──────────────────────────────────
+      - name: Trivy - Escanear imagen App
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "${{ env.APP_IMAGE }}:${{ needs.build-and-push.outputs.image_tag }}"
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          severity: "CRITICAL"
+
+      # ── Escaneo del repositorio (IaC y filesystem) ──────────
+      - name: Trivy - Escanear repositorio (archivos Terraform e IaC)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "./terraform"
+          format: "table"
+          exit-code: "1"
+          severity: "CRITICAL,HIGH"
+
+  # ──────────────────────────────────────────────────────────
+  # JOB 3: Validacion del codigo Terraform
+  # PROHIBIDO: No se ejecuta terraform apply en ninguna circunstancia.
+  # ──────────────────────────────────────────────────────────
+  terraform-validate:
+    name: Terraform Format and Validate
+    runs-on: ubuntu-latest
+    # Este job puede correr en paralelo con el escaneo de seguridad.
+    needs: build-and-push
+
+    steps:
+      - name: Checkout del codigo fuente
+        uses: actions/checkout@v4
+
+      - name: Instalar Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.8.5"
+
+      - name: terraform fmt -check
+        id: fmt
+        working-directory: ./terraform
+        run: terraform fmt -check -recursive
+        # Falla si alguno de los archivos .tf no esta correctamente formateado.
+
+      - name: terraform init (sin backend remoto)
+        id: init
+        working-directory: ./terraform
+        # -backend=false evita conectarse a cualquier backend de estado remoto.
+        # Las variables requeridas se satisfacen con valores ficticios para
+        # que la validacion sintactica pueda ejecutarse sin credenciales reales.
+        run: terraform init -backend=false
+
+      - name: terraform validate
+        id: validate
+        working-directory: ./terraform
+        # Inyectamos solo las variables estrictamente necesarias para que
+        # el grafo de recursos sea valido sin valores reales de produccion.
+        run: terraform validate
+
+      - name: Resumen de validacion
+        if: always()
+        run: |
+          echo "### Resultados de la Validacion de Terraform" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Paso           | Resultado |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| -------------- | --------- |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| fmt -check     | ${{ steps.fmt.outcome }}    |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| init           | ${{ steps.init.outcome }}   |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| validate       | ${{ steps.validate.outcome }} |" >> "$GITHUB_STEP_SUMMARY"
