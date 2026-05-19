@@ -27,13 +27,13 @@ El script sigue cuatro fases críticas:
 
 Durante la integración surgieron varios desafíos técnicos que fueron resueltos para alcanzar la estabilidad actual:
 
-| Problema detectado | Causa raíz | Solución aplicada |
-| :--- | :--- | :--- |
-| **Error `ImagePullBackOff`** | Minikube intentaba descargar las imágenes de Internet en lugar de usar las locales. | Se añadió el comando `minikube image load` al flujo de integración y se configuró `image_pull_policy = "IfNotPresent"`. |
-| **Fallo en Healthcheck de DB** | El script de test intentaba conectar a la IP del pod, la cual es dinámica. | Se cambió la validación para que apunte al nombre DNS del `Service` de la base de datos (`db-service`). |
-| **NetworkPolicies ignoradas** | El CNI por defecto de Minikube (Docker) no soporta filtrado de red. | Se documentó y automatizó el arranque de Minikube con el CNI **Calico** (`--cni=calico`). |
-| **Error de Sintaxis en Pods** | Error tipográfico en el comando `kubectl run` durante los tests de intrusión. | Se corrigió el espaciado en los argumentos de labels en el script de integración. |
-| **Bloqueo de red en macOS** | El driver de Docker en Mac a veces aísla el tráfico de red de forma distinta a Linux. | Se añadieron tiempos de espera (timeouts) y reintentos en los comandos `curl` de validación. |
+| Problema detectado             | Causa raíz                                                                            | Solución aplicada                                                                                                       |
+| :----------------------------- | :------------------------------------------------------------------------------------ | :---------------------------------------------------------------------------------------------------------------------- |
+| **Error `ImagePullBackOff`**   | Minikube intentaba descargar las imágenes de Internet en lugar de usar las locales.   | Se añadió el comando `minikube image load` al flujo de integración y se configuró `image_pull_policy = "IfNotPresent"`. |
+| **Fallo en Healthcheck de DB** | El script de test intentaba conectar a la IP del pod, la cual es dinámica.            | Se cambió la validación para que apunte al nombre DNS del `Service` de la base de datos (`db-service`).                 |
+| **NetworkPolicies ignoradas**  | El CNI por defecto de Minikube (Docker) no soporta filtrado de red.                   | Se documentó y automatizó el arranque de Minikube con el CNI **Calico** (`--cni=calico`).                               |
+| **Error de Sintaxis en Pods**  | Error tipográfico en el comando `kubectl run` durante los tests de intrusión.         | Se corrigió el espaciado en los argumentos de labels en el script de integración.                                       |
+| **Bloqueo de red en macOS**    | El driver de Docker en Mac a veces aísla el tráfico de red de forma distinta a Linux. | Se añadieron tiempos de espera (timeouts) y reintentos en los comandos `curl` de validación.                            |
 
 ---
 
