@@ -84,7 +84,13 @@ Verifica que los *healthchecks* y recursos funcionen:
    ```
    Para la base de datos (comprueba la conexión interna):
    ```bash
-   docker compose exec db psql -U greendev_user -d greendev_db -c "\dt"
+   docker compose exec db psql -U greendev_user -d greendev_db -c "SELECT NOW();"
+   ```
+
+4. **Prueba de Conectividad entre Contenedores (Pings):**
+   Para demostrar que los contenedores se reconocen correctamente entre sí mediante el DNS interno de Docker (en la red `greendev_net`), ejecuta el siguiente script que realizará comprobaciones cruzadas (`ping`) entre Nginx, App y DB:
+   ```bash
+   ./scripts/test_compose_connectivity.sh
    ```
 
 ### 4.3. Borrar el Entorno

@@ -63,7 +63,9 @@ command -v minikube    >/dev/null 2>&1 || error "Minikube no está instalado."
 command -v terraform   >/dev/null 2>&1 || error "Terraform no instalado. Ejecuta: bash install_terraform.sh"
 
 if ! minikube status | grep -q "Running"; then
-  error "Minikube no está en ejecución. Ejecuta primero: minikube start"
+  warn "Minikube no está en ejecución. Arrancándolo automáticamente..."
+  minikube start --cni=calico
+  success "Minikube arrancado."
 fi
 
 if [[ -z "${TF_VAR_db_password:-}" ]]; then

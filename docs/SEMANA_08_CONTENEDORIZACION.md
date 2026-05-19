@@ -90,7 +90,26 @@ docker run -d -p 3000:3000 --name app-container --read-only --cap-drop=ALL app-g
 curl localhost:3000
 ```
 
-### 6.3. Borrar
+### 6.3. Escaneo de Vulnerabilidades (Seguridad)
+Para analizar las imágenes en busca de vulnerabilidades (CVEs), se utiliza **Docker Scout** sobre las imágenes subidas a Docker Hub (`musefa/`):
+
+```bash
+# Vista rápida del resumen de vulnerabilidades
+docker scout quickview musefa/nginx-gsx:v1
+docker scout quickview musefa/app-gsx:v1
+
+# Listar detalladamente todas las vulnerabilidades (CVEs)
+docker scout cves musefa/nginx-gsx:v1
+docker scout cves musefa/app-gsx:v1
+
+# Obtener recomendaciones de actualización y mitigación
+docker scout recommendations musefa/nginx-gsx:v1
+docker scout recommendations musefa/app-gsx:v1
+```
+
+*Nota: Asegúrate de estar autenticado en tu cuenta de Docker (`docker login`) y utilizar la etiqueta (tag) de versión que corresponda en ese instante.*
+
+### 6.4. Borrar
 ```bash
 docker rm -f nginx-container app-container
 ```
