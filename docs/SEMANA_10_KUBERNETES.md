@@ -15,16 +15,22 @@ Este apartado describe la migración de la infraestructura de GreenDevCorp hacia
 +-------------------------------------------------------------+
 |                 Clúster Kubernetes (Minikube)               |
 |                                                             |
+|   +-------------------+                                     |
+|   |   Service Nginx   |                                     |
+|   |    (NodePort)     |                                     |
+|   +---------+---------+                                     |
+|             |                                               |
+|             v                                               |
 |   +-------------------+          +-------------------+      |
-|   |   Service Nginx   |          |   Service App     |      |
-|   |    (NodePort)     +--------->|   (ClusterIP)     |      |
+|   | Deployment Nginx  |          |   Service App     |      |
+|   |   (1 Réplica)     +--------->|   (ClusterIP)     |      |
 |   +-------------------+  Proxy   +---------+---------+      |
-|             |            Pass              |                |
-|             v                              v                |
-|   +-------------------+          +-------------------+      |
-|   | Deployment Nginx  |          | Deployment App    |      |
-|   |   (1 Réplica)     |          |   (2 Réplicas)    |      |
-|   +-------------------+          +---------+---------+      |
+|                          Pass              |                |
+|                                            v                |
+|                                  +-------------------+      |
+|                                  | Deployment App    |      |
+|                                  |   (2 Réplicas)    |      |
+|                                  +---------+---------+      |
 |                                            | Conexión TCP   |
 |                                            | (Puerto 5432)  |
 |                                            v                |
@@ -61,30 +67,46 @@ Este apartado describe la migración de la infraestructura de GreenDevCorp hacia
     - `ClusterIP`: Permite resolución DNS interna entre los pods sin depender de IPs inestables.
     - `NodePort`: Abre un puerto físico en el nodo (Minikube) para tráfico externo.
 
-## 3. Despliegue: Manual vs Automático
+## 3. Scripts de Automatización y Pruebas
 
-### 3.1. Despliegue Automático (Mediante Script)
-Para una ejecución rápida y automatizada que gestione las precondiciones, puedes utilizar el script de configuración:
+Para facilitar la administración, el despliegue y las pruebas en Kubernetes, se han preparado diversos scripts automatizados:
+
+### 3.1. Script de Despliegue (`k8s_deploy.sh`)
+Este script (anteriormente `k8s_setup_manually.sh`) automatiza el despliegue del entorno:
+* **¿Qué hace?** Configura el cliente de Docker para apuntar al daemon interno de Minikube, compila las imágenes localmente (garantizando que K8s use la versión exacta de tu código) y aplica de golpe todos los manifiestos YAML de la carpeta `kubernetes/`.
 ```bash
-./scripts/k8s_setup_manually.sh
+./scripts/k8s_deploy.sh
 ```
 
-### 3.2. Despliegue Manual (Paso a Paso con kubectl)
-Si deseas tener un control total y ejecutar los comandos uno a uno:
+### 3.2. Script de Verificación de Salud (`k8s_check_health.sh`)
+Automatiza las pruebas de resiliencia y el estado del clúster.
+* **¿Qué hace?** Verifica que todos los recursos estén corriendo. Luego, realiza pruebas de **escalado** (aumentando réplicas de Nginx) y de **auto-recuperación** (eliminando intencionadamente pods del backend para comprobar que Kubernetes los recrea en segundos para mantener la alta disponibilidad).
+```bash
+./scripts/k8s_check_health.sh
+```
 
+### 3.3. Script de Auditoría de Seguridad (`k8s_check_security.sh`)
+Verifica empíricamente que el aislamiento de red (NetworkPolicies) funciona correctamente.
+* **¿Qué hace?** Lanza pods "intrusos" y simula conexiones cruzadas no autorizadas (ej. intentar acceder a la base de datos sin tener los labels adecuados, o intentar saltar desde el entorno de Producción a Desarrollo). Comprueba que Kubernetes bloquea activamente este tráfico (Timeout).
+```bash
+./scripts/k8s_check_security.sh
+```
+
+## 4. Comandos Manuales (Paso a Paso con kubectl)
+
+Si prefieres realizar el control total manualmente sin usar los scripts anteriores:
+
+### 4.1. Despliegue Manual
 1. **Iniciar el clúster:**
    ```bash
    minikube start
    ```
 2. **Aplicar los manifiestos YAML:**
-   Se cargan todos los recursos definidos en la carpeta `kubernetes/`:
    ```bash
    kubectl apply -f kubernetes/
    ```
 
-### 3.3. Probar la Resiliencia (Auto-Healing y Escalado)
-Puedes probar las capacidades dinámicas de Kubernetes:
-
+### 4.2. Pruebas de Resiliencia Manuales
 1. **Prueba de Escalado:**
    ```bash
    kubectl scale deployment nginx --replicas=3
@@ -92,13 +114,10 @@ Puedes probar las capacidades dinámicas de Kubernetes:
    ```
 2. **Prueba de Auto-Recuperación (Self-healing):**
    ```bash
-   # Obtén el nombre de un pod y mátalo
    kubectl delete pod -l app=backend
-   
-   # Observa cómo Kubernetes levanta otro en segundos
    kubectl get pods -w
    ```
-3. **Prueba de Conectividad:**
+3. **Prueba de Conectividad (URL):**
    ```bash
    minikube service nginx-service --url
    ```

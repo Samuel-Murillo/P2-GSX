@@ -9,80 +9,83 @@ Este documento unifica el diseño de red (segmentación CIDR y NetworkPolicies),
 ### 1.1 Diagrama de Arquitectura de Red
 
 ```mermaid
-graph TD
-    %% Entidades Externas
-    Internet[Internet]
-    Partners[Partners Externos]
-    Oficina[Oficina Central / VPN]
+graph LR
+    Internet(["Internet"])
+    Partners(["Partners Externos"])
+    Oficina(["Oficina Central / VPN"])
 
-    %% Router / Firewall Perimetral
-    Firewall((Firewall / Router Edge))
+    FW1{{"Firewall Perimetral - FW1"}}
 
-    Internet --> Firewall
-    Partners -->|VPN/IPsec| Firewall
-    Oficina -->|VPN/SD-WAN| Firewall
+    Internet -->|"HTTPS 443 / HTTP 80"| FW1
+    Partners -->|"VPN IPsec"| FW1
+    Oficina  -->|"VPN SD-WAN"| FW1
 
-    %% Red Corporativa: 10.0.0.0/16
-    subgraph Red_Corporativa ["Red Corporativa (10.0.0.0/16)"]
-        
-        %% DMZ / Servicios Expuestos
-        subgraph DMZ ["DMZ - Servicios Expuestos (10.0.1.0/24)"]
-            Ingress[Kubernetes Ingress / LoadBalancer]
-            Bastion[Bastion Host]
-        end
-        
-        Firewall --> DMZ
-
-        %% Clúster Kubernetes
-        subgraph K8s_Cluster ["Clúster Kubernetes (Red de Nodos y Pods)"]
-            
-            Ingress --> Nginx_Prod
-            Ingress --> Nginx_Staging
-            Ingress --> Nginx_Dev
-            
-            %% Entorno de Producción
-            subgraph Prod ["Producción (10.0.10.0/24)"]
-                Nginx_Prod[Frontend Nginx] --> App_Prod[Backend Node.js]
-                App_Prod --> DB_Prod[(PostgreSQL DB)]
-            end
-            
-            %% Entorno de Staging
-            subgraph Staging ["Staging (10.0.20.0/24)"]
-                Nginx_Staging[Frontend Nginx] --> App_Staging[Backend Node.js]
-                App_Staging --> DB_Staging[(PostgreSQL DB)]
-            end
-
-            %% Entorno de Desarrollo
-            subgraph Dev ["Desarrollo (10.0.30.0/24)"]
-                Nginx_Dev[Frontend Nginx] --> App_Dev[Backend Node.js]
-                App_Dev --> DB_Dev[(PostgreSQL DB)]
-            end
-        end
-
-        Bastion -.-> K8s_Cluster
-        
-        %% Servicios Comunes (Identidad, DNS)
-        subgraph Servicios_Core ["Servicios Core (10.0.100.0/24)"]
-            OpenLDAP[Servidor OpenLDAP]
-            DNS_Interno[Servidor DNS]
-            NTP_Interno[Servidor NTP]
-        end
-        
-        K8s_Cluster --> Servicios_Core
+    subgraph DMZ ["DMZ - Zona Desmilitarizada 10.0.1.0/24"]
+        direction TB
+        Nginx_DMZ["Nginx - Reverse Proxy 10.0.1.10"]
+        Bastion["Bastion Host - SSH 10.0.1.20"]
     end
-    
-    classDef default fill:#f9f9f9,stroke:#333,stroke-width:1px;
-    classDef external fill:#ffebee,stroke:#c62828;
-    classDef dmz fill:#fff3e0,stroke:#ef6c00;
-    classDef prod fill:#e8f5e9,stroke:#2e7d32;
-    classDef dev fill:#e3f2fd,stroke:#1565c0;
-    classDef core fill:#ede7f6,stroke:#4527a0;
 
-    class Internet,Partners,Oficina external;
-    class DMZ dmz;
-    class Prod prod;
-    class Staging,Dev dev;
-    class Servicios_Core core;
+    FW1 -->|"Solo 80 y 443"| Nginx_DMZ
+    FW1 -.->|"Solo 22 - solo admins"| Bastion
+
+    FW2{{"Firewall Interno - FW2"}}
+
+    Nginx_DMZ -->|"Proxy Pass HTTP"| FW2
+    Bastion -.->|"Acceso admin"| FW2
+
+    subgraph Interna ["Red Corporativa Interna 10.0.0.0/16"]
+        direction TB
+
+        subgraph K8s ["Cluster Kubernetes"]
+            direction TB
+
+            subgraph Prod ["Produccion 10.0.10.0/24"]
+                direction LR
+                App_Prod["Node.js"] --> DB_Prod[("PostgreSQL")]
+            end
+
+            subgraph Staging ["Staging 10.0.20.0/24"]
+                direction LR
+                App_Stg["Node.js"] --> DB_Stg[("PostgreSQL")]
+            end
+
+            subgraph Dev ["Desarrollo 10.0.30.0/24"]
+                direction LR
+                App_Dev["Node.js"] --> DB_Dev[("PostgreSQL")]
+            end
+        end
+
+        subgraph Core ["Servicios Core 10.0.100.0/24"]
+            direction TB
+            DNS["DNS Interno"]
+            LDAP["OpenLDAP / IdP"]
+            NTP["NTP Server"]
+        end
+    end
+
+    FW2 -->|"App Prod"| App_Prod
+    FW2 -->|"App Staging"| App_Stg
+    FW2 -->|"App Dev"| App_Dev
+
+    K8s -->|"Auth y DNS interno"| Core
+    Bastion -.->|"kubectl / SSH"| K8s
+
+    classDef external   fill:#ffcdd2,stroke:#c62828,color:#000
+    classDef fw         fill:#ff8a65,stroke:#bf360c,color:#000
+    classDef dmz        fill:#ffe0b2,stroke:#e65100,color:#000
+    classDef prod_style fill:#c8e6c9,stroke:#1b5e20,color:#000
+    classDef stg_style  fill:#fff9c4,stroke:#f57f17,color:#000
+    classDef dev_style  fill:#bbdefb,stroke:#0d47a1,color:#000
+    classDef core_style fill:#e1bee7,stroke:#4a148c,color:#000
+
+    class Internet,Partners,Oficina external
+    class FW1,FW2 fw
+    class Nginx_DMZ,Bastion dmz
+    class App_Prod,DB_Prod prod_style
+    class App_Stg,DB_Stg stg_style
+    class App_Dev,DB_Dev dev_style
+    class DNS,LDAP,NTP core_style
 ```
 
 ### 1.2 Plan de Direccionamiento IP (CIDR)
@@ -92,7 +95,7 @@ Se ha adoptado el bloque `10.0.0.0/16` para toda la organización, proporcionand
 | Segmento de Red              | Subred CIDR     | IPs Disponibles | Propósito                                                       |
 | :--------------------------- | :-------------- | :-------------- | :-------------------------------------------------------------- |
 | **Red Corporativa (Global)** | `10.0.0.0/16`   | 65,536          | Todo el tráfico corporativo interno.                            |
-| **DMZ / Exposición Externa** | `10.0.1.0/24`   | 254             | Proxies inversos, Ingress controllers y Bastion Hosts.          |
+| **DMZ / Servicios Expuestos** | `10.0.1.0/24`   | 254             | Nginx Reverse Proxy (cara pública) y Bastion Host (administración SSH). |
 | **Producción (Prod)**        | `10.0.10.0/24`  | 254             | Nodos y pods del entorno de producción. Aislado estrictamente.  |
 | **Staging (Pre-Prod)**       | `10.0.20.0/24`  | 254             | Entorno de pruebas previo a producción.                         |
 | **Desarrollo (Dev)**         | `10.0.30.0/24`  | 254             | Entorno para desarrolladores y pruebas continuas.               |
@@ -102,10 +105,9 @@ Se ha adoptado el bloque `10.0.0.0/16` para toda la organización, proporcionand
 ### 1.3 Fronteras de Seguridad (Security Boundaries)
 
 Esta segmentación responde al principio de **defensa en profundidad** y **mínimo privilegio**:
-* **Internet a DMZ:** Permitido **SÓLO** puertos 80 y 443 hacia los Ingress Controllers. Tráfico bloqueado hacia cualquier otra IP interna (`0.0.0.0/0` está prohibido en bases de datos).
-* **DMZ a Entornos (Prod/Dev):** Permitido solo tráfico HTTP/HTTPS enrutado por el Ingress Controller hacia el Nginx de cada namespace.
-* **Intra-Entorno (Frontend a Backend):** El Frontend (Nginx) solo puede comunicarse con el Backend (Node.js) en el puerto 3000.
-* **Intra-Entorno (Backend a DB):** El Backend solo puede comunicarse con la Base de Datos (PostgreSQL) en el puerto 5432. Todo el resto de tráfico entrante a la DB se **deniega implícitamente**.
+* **Internet a DMZ (FW1):** Permitido **SÓLO** puertos 80 y 443 hacia el Nginx Reverse Proxy. El Bastion Host solo acepta conexiones SSH (puerto 22) desde IPs de administración. El resto del tráfico está bloqueado.
+* **DMZ a Red Interna (FW2):** El Nginx de la DMZ puede hacer `proxy_pass` hacia los backends (Node.js) en la red interna. El Bastion puede acceder al clúster Kubernetes para administración. Ningún otro tráfico proveniente de la DMZ puede entrar a la red interna.
+* **Intra-Entorno (Backend a DB):** El Backend (Node.js) solo puede comunicarse con su PostgreSQL en el puerto 5432. Todo el resto de tráfico entrante a la DB se **deniega implícitamente**.
 * **Inter-Entorno (Prod ↔ Dev):** Todo el tráfico cruzado entre namespaces de distintos entornos está **estrictamente bloqueado** usando `kubernetes_network_policy`.
 
 Esto previene la configuración errónea accidental: si un desarrollador configura la base de datos de producción en el archivo `dev.tfvars`, la conexión fallará por red, evitando corrupción de datos.
