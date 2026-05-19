@@ -17,10 +17,20 @@ Todo el despliegue está gestionado y aprovisionado a través de **Terraform**, 
 
 La documentación detallada se encuentra en el directorio `/docs/`:
 
+### Entregables Generales
 * [Arquitectura Final (`/docs/ARCHITECTURE_FINAL.md`)](./docs/ARCHITECTURE_FINAL.md): Diagramas de infraestructura, flujos de datos y especificaciones de microservicios.
+* [Proceso de Integración (`/docs/INTEGRATION_PROCESS.md`)](./docs/INTEGRATION_PROCESS.md): Guía y reporte sobre el proceso de integración continua y despliegue.
 * [Runbook Operativo (`/docs/RUNBOOK.md`)](./docs/RUNBOOK.md): Guía de operaciones diarias, despliegues y escalado.
 * [Troubleshooting (`/docs/TROUBLESHOOTING.md`)](./docs/TROUBLESHOOTING.md): Guía para la resolución de problemas comunes.
-* [Reflexión (`/docs/REFLECTION.md`)](./docs/REFLECTION.md): Ensayo personal sobre el proceso de aprendizaje DevOps.
+* [Reflexión Individual - Eric (`/docs/REFLECTION_ERIC.md`)](./docs/REFLECTION_ERIC.md): Ensayo personal de Eric sobre el proceso de aprendizaje DevOps.
+* [Reflexión Individual - Samuel (`/docs/REFLECTION_SAMUEL.md`)](./docs/REFLECTION_SAMUEL.md): Ensayo personal de Samuel sobre el proceso de aprendizaje DevOps.
+
+### Bitácoras de Trabajo Semanal
+* [Semana 08: Contenerización](./docs/SEMANA_08_CONTENEDORIZACION.md): Empaquetado de la aplicación con Docker y auditoría inicial de seguridad.
+* [Semana 09: Orquestación Local con Docker Compose](./docs/SEMANA_09_DOCKER_COMPOSE.md): Definición del entorno multi-contenedor y validación de red local.
+* [Semana 10: Despliegue en Kubernetes (Kubectl)](./docs/SEMANA_10_KUBERNETES.md): Migración y despliegue sobre Minikube.
+* [Semana 11: Infraestructura como Código con Terraform](./docs/SEMANA_11_TERRAFORM.md): Automatización del aprovisionamiento del clúster de K8s.
+* [Semana 12: Diseño de Red e Identidad](./docs/SEMANA_12_RED_E_IDENTIDAD.md): Segmentación de red (CNI Calico, NetworkPolicies) y servicios de identidad.
 
 ## Quick Start: Despliegue desde cero
 
